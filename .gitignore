@@ -1,4 +1,5 @@
-api_key/
+#ignore keys
+parameters.py
 
 __pycache__/
 *.py[cod]
