@@ -1,1 +1,6 @@
 PLANET_API_KEY = 'ThisIsNotAKey'
+BUFFER_SIZE = 2000
+FILENAME = '/home/prambaud/point_reader/centroids.txt' # need to be in EPSG:4326
+FILE_ID = 'sel_id' # name of the Id column in the file 
+FILE_LNG = 'xcoord' # name of the xcoord column in the file 
+FILE_LAT = 'ycoord' #name of the ycoord column in the file
