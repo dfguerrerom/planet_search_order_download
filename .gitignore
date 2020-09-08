@@ -1,4 +1,4 @@
-api_key/
+api_key/planet_api_key.txt
 
 __pycache__/
 *.py[cod]
