@@ -1,4 +1,13 @@
+######################
+##        keys      ##
+######################
+
 PLANET_API_KEY = 'ThisIsNotAKey'
+
+###########################
+##        read file      ##
+###########################
+
 BUFFER_SIZE = 2000
 FILENAME = '/home/prambaud/point_reader/centroids.txt' # need to be in EPSG:4326
 FILE_ID = 'sel_id' # name of the Id column in the file 

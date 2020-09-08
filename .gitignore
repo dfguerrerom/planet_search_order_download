@@ -1,5 +1,5 @@
 #ignore keys
-api_key/planet_api_key.py
+parameters.py
 
 __pycache__/
 *.py[cod]
