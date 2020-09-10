@@ -1,5 +1,7 @@
 #ignore keys
 parameters.py
+thumbs/
+*.zip
 
 __pycache__/
 *.py[cod]
