@@ -2,7 +2,7 @@
 ##        keys      ##
 ######################
 
-PLANET_API_KEY = '7779c34186f04031b0734e1b7b7ad820'
+PLANET_API_KEY = x
 
 ###########################
 ##        read file      ##
