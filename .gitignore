@@ -2,7 +2,7 @@
 parameters.py
 thumbs/
 *.zip
-
+point_reader/
 __pycache__/
 *.py[cod]
 *$py.class
