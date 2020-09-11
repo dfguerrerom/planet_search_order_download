@@ -6,6 +6,7 @@ point_reader/
 downloads/
 logs/
 searches/
+*.p
 
 
 __pycache__/
