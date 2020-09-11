@@ -3,6 +3,11 @@ parameters.py
 thumbs/
 *.zip
 point_reader/
+downloads/
+logs/
+searches/
+
+
 __pycache__/
 *.py[cod]
 *$py.class
