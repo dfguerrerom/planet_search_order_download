@@ -93,22 +93,22 @@ def build_request(aoi_geom, start_date, stop_date, cloud_cover=100):
         'REOrthoTile',])
 
     
-@backoff.on_exception(backoff.expo,
-                      (planet.api.exceptions.OverQuota),
-                      max_time=360)
+@backoff.on_exception(backoff.expo, planet.api.exceptions.OverQuota, max_time=360)
 def get_items(id_name, request, client):
     """ Get items using the request with the given parameters
            
     """
     result = client.quick_search(request)
-    response = result.response
+ 
+    items_pages = []
+    limit_to_x_pages = None
+    for page in result.iter(limit_to_x_pages):
+        items_pages.append(page.get())
 
-    items = []
-    for page in result.iter():
-        for item in page.items_iter(limit=10000):
-            items.append(item)
+    items = [item for page in items_pages for item in page['features']]
     
-    return [id_name, items], response
+    
+    return (id_name, items)
     
 def get_dataframe(items):
     
@@ -120,7 +120,7 @@ def get_dataframe(items):
                      f['geometry'],
                      f['properties']['cloud_cover'],
                      f
-                    ) for f in items[1]]
+                    ) for f in items[1] ]
     
     # Store into dataframe
     df = pd.DataFrame(items_metadata)
@@ -149,33 +149,27 @@ def add_cover_area(metadata_df, sample_df):
         g2 = shape(row.footprint) # footprint geometry
         metadata_df.at[idx, 'cover_perc'] = (g1.intersection(g2).area/g1.area)
         
-def build_order_from_metadata(metadata_df, samples_df, sample_id):
+def build_order_from_metadata(metadata_df, idx, row, products_bundles):
+    
+    sample_id = idx
+    
     
     filtered_df = metadata_df[metadata_df.sample_id==sample_id]
     
+    # This will create a tuple with the item_type and with the corresponding associated item_ids'
     items_by_type = [(item_type, filtered_df[filtered_df.item_type == item_type].id.to_list())
               for item_type in filtered_df.item_type.unique()]
     
-    products_bundles = {
-        
-        # Is not possible to ask for analytic_dn in PSScene3Band, so the next option is visual
-        # for more info go to https://developers.planet.com/docs/orders/product-bundles-reference/
-        'PSScene3Band': "analytic,visual",
-        'PSScene4Band': "analytic_udm2,analytic_sr,analytic",
-        'PSOrthoTile': "analytic_5b_udm2,analytic_5b,analytic_udm2,analytic",
-        'REOrthoTile': "analytic",
-    }
-
     products_order = [
         {
-            "item_ids":v, 
             "item_type":k, 
+            "item_ids":v, 
             "product_bundle": products_bundles[k]
         } for k, v in items_by_type
     ]
     
     # clip to AOI
-    aoi_geojson = json.loads(dumps(samples_df.at[sample_id, 'geometry']))
+    aoi_geojson = json.loads(dumps(row.geometry))
     tools = [{
         'clip': {
             'aoi': aoi_geojson
