@@ -27,6 +27,14 @@ from tqdm.auto import tqdm
 from parameters import *
 
 
+DOWNLOAD_PATH = os.path.join(os.getcwd(), 'downloads')
+OUT_PIKL_PATH = os.path.join(os.getcwd(), 'searches')
+LOG_PATH = os.path.join(os.getcwd(), 'logs')
+
+Path(OUT_PIKL_PATH).mkdir(parents=True, exist_ok=True)
+Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
+Path(LOG_PATH).mkdir(parents=True, exist_ok=True)
+
 
 def save_thumb(metadata_df):
     """ From the metadata dataframe, save the thumbnail
@@ -250,3 +258,37 @@ def track_order(order_id, client, num_loops=50):
             break
         
         time.sleep(10)
+        
+def get_existing_orders(client, pages=None):
+    # Search all the requested orders per page
+    # Fixed api.models NEXT_KEY parameter from "_next" to "next"
+
+    ordered_orders = client.get_orders()
+    ordered_orders.NEXT_KEY = "next"
+    order_pages=[]
+
+    # We can limit the search to certain number of pages
+    # if we leave as none, will search over all of them
+    limit_to_x_pages = pages
+    for page in ordered_orders.iter(limit_to_x_pages):
+        page.NEXT_KEY = "next"
+        order_pages.append(page.get())
+
+    current_server_orders = [order for page in order_pages for order in page['orders']]
+    
+    return current_server_orders
+
+
+
+def get_orders_status(client, pages=None):
+    current_server_orders = get_existing_orders(client, pages)
+    progress_df = pd.DataFrame([(f['created_on'], 
+                                 f['last_message'], 
+                                 f['last_modified'], 
+                                 f['id'], 
+                                 f['name'], 
+                                 f['state'], ) for f in current_server_orders])
+    progress_df.columns =['created_on', 'last_message', 'last_modified', 'id', 'name', 'state',]
+    progress_df.sort_values(by=['created_on'])
+    
+    return progress_df
