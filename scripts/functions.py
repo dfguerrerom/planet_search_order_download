@@ -2,14 +2,16 @@ import os
 import datetime
 import time
 import json
+import glob
 import pandas as pd
 import geopandas as gpd
 import numpy as np
 import requests
 import shutil
 import backoff
-
+import multiprocessing
 import rasterio
+
 from time import sleep
 from rasterio import plot
 from shapely.geometry import MultiPolygon, shape, Point
@@ -26,6 +28,7 @@ from tqdm.auto import tqdm
 
 from parameters import *
 
+
 DOWNLOAD_PATH = os.path.join(os.getcwd(), 'downloads')
 OUT_PIKL_PATH = os.path.join(os.getcwd(), 'searches')
 LOG_PATH = os.path.join(os.getcwd(), 'logs')
@@ -33,6 +36,12 @@ LOG_PATH = os.path.join(os.getcwd(), 'logs')
 Path(OUT_PIKL_PATH).mkdir(parents=True, exist_ok=True)
 Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
 Path(LOG_PATH).mkdir(parents=True, exist_ok=True)
+
+
+import itables.interactive
+import itables.options as opt
+opt.maxBytes=0
+opt.classes = ["display", "nowrap"]
 
 
 def save_thumb(metadata_df):
@@ -253,6 +262,19 @@ def get_one_item_per_month(scored_items_df):
     df = df.sort_values(by=['date'], ascending=False)
     
     return df
+
+def get_one_item_every_x(scored_items_df, every=1):
+    
+    df = scored_items_df.copy()
+    df['year'] = df.date.dt.year
+    df['month'] = df.date.dt.month
+    df['day'] = df.date.dt.day
+
+    df = df.drop_duplicates(subset=['year', 'month', 'day'], keep='first')
+    df = df.sort_values(by=['date'], ascending=False)
+    
+    return df[::every]
+
     
 def track_order(order_id, client, num_loops=50):
     count = 0
@@ -302,3 +324,58 @@ def get_orders_status(client, pages=None):
     progress_df.sort_values(by=['created_on'])
     
     return progress_df
+
+
+def run_multiprocess(index, row, srch_log_file, by_month=False, by_every=0):
+    
+    aoi_geometry = json.loads(dumps(row.geometry))
+    sample_id = row.name
+    
+    if by_every:
+        pickle_df_name = os.path.join(OUT_PIKL_PATH, str(sample_id)+'_every.p')
+    elif by_month:
+        pickle_df_name = os.path.join(OUT_PIKL_PATH, str(sample_id)+'_month.p')
+    else:
+        pickle_df_name = os.path.join(OUT_PIKL_PATH, str(sample_id)+'_year.p')
+
+    if not os.path.exists(pickle_df_name):
+        request = build_request(aoi_geometry, start_date, stop_date, cloud_cover_lte)
+
+        try:
+            print(f'Starting {sample_id}')
+            items = get_items(sample_id, request, client)
+            # Transform items into a pandas dataframe with useful columns
+            metadata_df = get_dataframe(items)
+            
+            # Mutate metadata_df and add the percentage of cover area
+            add_cover_area(metadata_df, samples_gdf)
+
+            # Remove items that are under the minimum_covered_area threshold
+            metadata_df = metadata_df[metadata_df.cover_perc >= (minimum_covered_area/100)]
+
+            # Create a score for each item
+            scored_items = score_items(metadata_df, item_type_score, months_score, cloud_score, cover_score)
+            
+            if by_every:
+                # Filter scored_items and get one item every x items
+                selected_items = get_one_item_every_x(scored_items, every=by_every)
+            
+            elif by_month:
+                # Filter scored_items and get only one per month
+                selected_items = get_one_item_per_month(scored_items)
+            else:
+                # Filter scored_items and get only one per year
+                selected_items = get_one_item_per_year(scored_items)
+            
+            # Save into a pickled file
+            selected_items.to_pickle(pickle_df_name)
+            
+            print(f'{sample_id} pickled.')
+            
+        except Exception as e:
+            print(f'there was an error with the sample {sample_id}, please check the log files.')
+            with open(srch_log_file, 'a') as lf:
+                lf.write(f'Sample {sample_id}:{e}\n')
+
+    else:
+        print(f'Search for {sample_id} already saved.')
