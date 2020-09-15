@@ -26,7 +26,6 @@ from tqdm.auto import tqdm
 
 from parameters import *
 
-
 DOWNLOAD_PATH = os.path.join(os.getcwd(), 'downloads')
 OUT_PIKL_PATH = os.path.join(os.getcwd(), 'searches')
 LOG_PATH = os.path.join(os.getcwd(), 'logs')
@@ -240,6 +239,17 @@ def get_one_item_per_year(scored_items_df):
     df = scored_items_df.copy()
     df['year'] = df.date.dt.year
     df = df.drop_duplicates(subset=['year'], keep='first')
+    df = df.sort_values(by=['date'], ascending=False)
+    
+    return df
+
+def get_one_item_per_month(scored_items_df):
+    
+    df = scored_items_df.copy()
+    df['year'] = df.date.dt.year
+    df['month'] = df.date.dt.month
+    
+    df = df.drop_duplicates(subset=['year', 'month'], keep='first')
     df = df.sort_values(by=['date'], ascending=False)
     
     return df
