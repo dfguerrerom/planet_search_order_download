@@ -324,58 +324,26 @@ def get_orders_status(client, pages=None):
     progress_df.sort_values(by=['created_on'])
     
     return progress_df
+        
+        
+def get_no_access_assets_from_log(log_file_name):
+    errors = []
+    with open(log_file_name, 'r') as f:
+        for line in f:
+            if line != '\n' and 'No access to assets' in line:
+                errors.append(line)
 
+    dict_of_errors = {}
+    for error in errors:
+        split = error.split(':')
+        split[0] = error.split(':')[0].replace('Sample ', '').replace('sample_','')
+        dict_of_errors[split[0]] = eval(":".join(split[1:]).replace('\n',''))
 
-def run_multiprocess(index, row, srch_log_file, by_month=False, by_every=0):
+    error_samples = list(dict_of_errors.keys())
     
-    aoi_geometry = json.loads(dumps(row.geometry))
-    sample_id = row.name
+    list_=[]
+    for key in error_samples:
+        for error in dict_of_errors[key]['field']['Details']:
+            list_.append((key, error['message'].split('/')[1]))
     
-    if by_every:
-        pickle_df_name = os.path.join(OUT_PIKL_PATH, str(sample_id)+'_every.p')
-    elif by_month:
-        pickle_df_name = os.path.join(OUT_PIKL_PATH, str(sample_id)+'_month.p')
-    else:
-        pickle_df_name = os.path.join(OUT_PIKL_PATH, str(sample_id)+'_year.p')
-
-    if not os.path.exists(pickle_df_name):
-        request = build_request(aoi_geometry, start_date, stop_date, cloud_cover_lte)
-
-        try:
-            print(f'Starting {sample_id}')
-            items = get_items(sample_id, request, client)
-            # Transform items into a pandas dataframe with useful columns
-            metadata_df = get_dataframe(items)
-            
-            # Mutate metadata_df and add the percentage of cover area
-            add_cover_area(metadata_df, samples_gdf)
-
-            # Remove items that are under the minimum_covered_area threshold
-            metadata_df = metadata_df[metadata_df.cover_perc >= (minimum_covered_area/100)]
-
-            # Create a score for each item
-            scored_items = score_items(metadata_df, item_type_score, months_score, cloud_score, cover_score)
-            
-            if by_every:
-                # Filter scored_items and get one item every x items
-                selected_items = get_one_item_every_x(scored_items, every=by_every)
-            
-            elif by_month:
-                # Filter scored_items and get only one per month
-                selected_items = get_one_item_per_month(scored_items)
-            else:
-                # Filter scored_items and get only one per year
-                selected_items = get_one_item_per_year(scored_items)
-            
-            # Save into a pickled file
-            selected_items.to_pickle(pickle_df_name)
-            
-            print(f'{sample_id} pickled.')
-            
-        except Exception as e:
-            print(f'there was an error with the sample {sample_id}, please check the log files.')
-            with open(srch_log_file, 'a') as lf:
-                lf.write(f'Sample {sample_id}:{e}\n')
-
-    else:
-        print(f'Search for {sample_id} already saved.')
+    return list_
