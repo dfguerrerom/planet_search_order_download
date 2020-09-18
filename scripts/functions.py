@@ -106,7 +106,8 @@ def build_request(aoi_geom, start_date, stop_date, cloud_cover=100):
         'PSScene3Band', 
         'PSScene4Band', 
         'PSOrthoTile',
-        'REOrthoTile',])
+        'REOrthoTile',
+    ])
 
     
 @backoff.on_exception(backoff.expo, planet.api.exceptions.OverQuota, max_time=360)
@@ -347,3 +348,29 @@ def get_no_access_assets_from_log(log_file_name):
             list_.append((key, error['message'].split('/')[1]))
     
     return list_
+
+
+def read_from_centroids(projected_epsg = None, buffer=350, sep=' '):
+    if not projected_epsg:
+        raise ValueError('No projected coordinate system EPSG provided')
+
+    #create a geoDataFrame object from a .txt file
+    if os.path.isfile(FILENAME):
+
+        df = pd.read_csv(FILENAME, sep=sep)
+
+        #filter only the `nb_rows` first rows
+        nb_rows = 1#len(df)
+        filter_df  = df[df.index.isin(range(nb_rows))]
+        df = filter_df
+
+        #create the geodataframe 
+        pts = [Point(df.loc[i][FILE_LNG], df.loc[i][FILE_LAT]) for i in range(len(df))]
+        samples_gdf = gpd.GeoDataFrame(data={'geometry': pts}, index=df[FILE_ID], crs="EPSG:4326")
+        samples_gdf.index.names = ['id']
+        samples_gdf = samples_gdf.to_crs(projected_epsg)
+        samples_gdf['geometry'] = samples_gdf['geometry'].buffer(buffer)
+        samples_gdf = samples_gdf.to_crs("EPSG:4326")
+        samples_gdf['geometry'] = samples_gdf['geometry'].envelope
+    
+        return samples_gdf
