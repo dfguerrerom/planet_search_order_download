@@ -360,7 +360,7 @@ def read_from_centroids(projected_epsg = None, buffer=350, sep=' '):
         df = pd.read_csv(FILENAME, sep=sep)
 
         #filter only the `nb_rows` first rows
-        nb_rows = 1#len(df)
+        nb_rows = len(df)
         filter_df  = df[df.index.isin(range(nb_rows))]
         df = filter_df
 
