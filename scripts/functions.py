@@ -195,6 +195,7 @@ def build_order_from_metadata(metadata_df, idx, row, products_bundles):
     
     order_request = {
         'name': f'sample_{str(sample_id)}',
+        'order_type':'partial',
         'products': products_order,
         'tools': tools,
         'delivery': {
@@ -316,12 +317,13 @@ def get_existing_orders(client, pages=None):
 def get_orders_status(client, pages=None):
     current_server_orders = get_existing_orders(client, pages)
     progress_df = pd.DataFrame([(f['created_on'], 
-                                 f['last_message'], 
+#                                  f['last_message'], 
                                  f['last_modified'], 
                                  f['id'], 
                                  f['name'], 
                                  f['state'], ) for f in current_server_orders])
-    progress_df.columns =['created_on', 'last_message', 'last_modified', 'id', 'name', 'state',]
+#     progress_df.columns =['created_on', 'last_message', 'last_modified', 'id', 'name', 'state',]
+    progress_df.columns =['created_on', 'last_modified', 'id', 'name', 'state',]
     progress_df.sort_values(by=['created_on'])
     
     return progress_df
