@@ -11,6 +11,8 @@ shp/
 __pycache__/
 *.py[cod]
 *$py.class
+99*
+
 
 # C extensions
 *.so
