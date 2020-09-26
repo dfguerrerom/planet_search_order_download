@@ -110,7 +110,7 @@ def build_request(aoi_geom, start_date, stop_date, cloud_cover=100):
     ])
 
     
-@backoff.on_exception(backoff.expo, planet.api.exceptions.OverQuota, max_time=360)
+@backoff.on_exception(backoff.expo, (planet.api.exceptions.OverQuota, planet.api.exceptions.TooManyRequests), max_time=360)
 def get_items(id_name, request, client):
     """ Get items using the request with the given parameters
            
@@ -166,7 +166,7 @@ def add_cover_area(metadata_df, sample_df):
         g2 = shape(row.footprint) # footprint geometry
         metadata_df.at[idx, 'cover_perc'] = (g1.intersection(g2).area/g1.area)
         
-def build_order_from_metadata(metadata_df, idx, row, products_bundles):
+def build_order_from_metadata(metadata_df, idx, row, products_bundles, sufix='sample_', partial=False):
     
     sample_id = idx
     
@@ -193,14 +193,18 @@ def build_order_from_metadata(metadata_df, idx, row, products_bundles):
         }
     },]
     
+    order_type = 'full'
+    if partial:
+        order_type = 'partial'
+    
     order_request = {
-        'name': f'sample_{str(sample_id)}',
-        'order_type':'partial',
+        'name': f'{sufix}_{str(sample_id)}',
+        'order_type': order_type,
         'products': products_order,
         'tools': tools,
         'delivery': {
             'single_archive': True,
-            'archive_filename':'{{name}}_{{order_id}}.zip',
+            'archive_filename':'{{name}}.zip',
             'archive_type':'zip'
         },
             'notifications': {
